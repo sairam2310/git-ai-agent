@@ -1,5 +1,5 @@
 from fastapi import FastAPI
-from git_handler import pull_code
+from git_handler import pull_code,commit_code
 from db import init_db, save_github_credentials, get_github_credentials
 from pydantic import BaseModel
 
@@ -23,4 +23,7 @@ def pull():
 	result=pull_code()  #returns in json format 
 	return result  
 
-	
+@app.get("/commit")
+def commit(issue_description: str):  
+    result = commit_code(issue_description)
+    return result

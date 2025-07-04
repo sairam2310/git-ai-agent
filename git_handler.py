@@ -1,28 +1,35 @@
 import subprocess
-from db import  get_github_credentials
+from db import get_github_credentials
+from stash_utils import stash_with_custom_message
+from commit_utils import get_project_name_from_branch, get_first_changed_filename
+from constants import GIT_COMMANDS
+
 def pull_code():
     try:
-        # Get GitHub credentials from the database
+        # 1. Get GitHub credentials
         username, token = get_github_credentials()
         if not token:
-            return {"status": "error", "message": "GitHub token not found. Please authenticate first."}
-       # Set token-based origin URL
-        subprocess.run(["git", "remote", "set-url", "origin",
-                        f"https://{username}:{token}@github.com/{username}/git-ai-agent.git"], check=True)
+            return {
+                "status": "error",
+                "message": "GitHub token not found. Please authenticate first."
+            }
 
-        # 1. Stash local changes
-        subprocess.run(["git", "stash"], check=True)
+        # 2. Set token-based remote URL
+        subprocess.run(
+       GIT_COMMANDS["REMOTE_SET_URL"] + [f"https://{username}:{token}@github.com/{username}/git-ai-agent.git"],
+        check=True)
 
-        # 2. Pull from remote
-        subprocess.run(["git", "pull"], check=True)
+        # 3. Stash current changes with custom message
+        stash_with_custom_message()
 
-        # 3. Apply stashed changes
-        stash_apply = subprocess.run(
-            ["git", "stash", "apply"],
-            capture_output=True, text=True
-        )
+        # 4. Pull from remote
+        subprocess.run(GIT_COMMANDS["PULL"], check=True)
 
-        # 4. Check for conflicts
+        # 5. Apply most recent stash (stash@{0})
+        subprocess.run(GIT_COMMANDS["STASH_APPLY"].split() + ["stash@{0}"], capture_output=True, text=True)
+
+
+        # 6. Check for merge conflicts
         if "CONFLICT" in stash_apply.stdout or "CONFLICT" in stash_apply.stderr:
             return {
                 "status": "conflict",
@@ -39,3 +46,28 @@ def pull_code():
             "status": "error",
             "message": f"Git operation failed: {e}"
         }
+
+
+def commit_code(issue_description):
+    try:
+        project = get_project_name_from_branch()
+        component = get_first_changed_filename()
+
+        message = f"{project} :: {component} :: {issue_description}"
+
+        # ✅ Only stage tracked changes
+        subprocess.run(GIT_COMMANDS["ADD_UPDATED"], check=True)
+        subprocess.run(GIT_COMMANDS["COMMIT"] + [message], check=True)
+
+        return {
+            "status": "success",
+            "message": f"Committed: {message}"
+        }
+
+    except subprocess.CalledProcessError as e:
+        return {
+            "status": "error",
+            "message": f"Commit failed: {e}"
+        }
+
+
