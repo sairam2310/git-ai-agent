@@ -1,7 +1,11 @@
-from fastapi import FastAPI
+from fastapi import FastAPI,WebSocket
 from git_handler import pull_code,commit_code,push_code
 from db import init_db, save_github_credentials, get_github_credentials
 from pydantic import BaseModel
+from repo_utils import detect_repo_info
+import global_state
+from webSocket_handler import connect_websocket, disconnect_websocket, broadcast_repo_info
+import asyncio
 
 app = FastAPI()
 init_db()
@@ -32,3 +36,18 @@ def commit(issue_description: str,mode):
 def commit():  
     result = push_code()
     return result
+
+@app.on_event("startup")
+async def startup_event():
+    global_state.REPO_INFO = detect_repo_info()
+    print("🧠 Repo info detected on startup:", global_state.REPO_INFO)
+    asyncio.create_task(broadcast_repo_info())  # start broadcast loop
+
+@app.websocket("/ws/repo-info")
+async def websocket_endpoint(websocket: WebSocket):
+    await connect_websocket(websocket)
+    try:
+        while True:
+            await websocket.receive_text()  # keep alive
+    except:
+        await disconnect_websocket(websocket)

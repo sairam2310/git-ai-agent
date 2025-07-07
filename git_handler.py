@@ -118,7 +118,7 @@ def commit_code(issue_description, mode):
 
         return {
             "status": "success",
-            "message": f"{msg}\nCommit: {message}"
+            "message": f"{msg}\nCommit\n: {message}"
         }
 
     except subprocess.CalledProcessError as e:
