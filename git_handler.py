@@ -28,8 +28,9 @@ def pull_code():
         if "CONFLICT" in stash_apply.stdout or "CONFLICT" in stash_apply.stderr:
             conflicted_files = extract_conflicted_files(output)
             return {
-                "status": "conflict",
-                "message": "Merge conflict detected during stash apply. Please resolve manually.",
+                "status": "success",
+                "message":"Code pulled and stash applied successfully."
+                "warning": "Merge conflict detected during stash apply. Please resolve manually.",
                 "conflicted_files": conflicted_files
             }
 
