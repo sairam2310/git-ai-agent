@@ -1,6 +1,6 @@
 import subprocess
 from db import get_github_credentials
-from stash_utils import stash_with_custom_message
+from stash_utils import stash_with_custom_message,extract_conflicted_files
 from commit_utils import get_project_name_from_branch, get_first_changed_filename
 from constants import GIT_COMMANDS
 from add_files_utils import list_changed_files
@@ -26,9 +26,11 @@ def pull_code():
         )
 
         if "CONFLICT" in stash_apply.stdout or "CONFLICT" in stash_apply.stderr:
+            conflicted_files = extract_conflicted_files(output)
             return {
                 "status": "conflict",
-                "message": "Merge conflict detected during stash apply. Please resolve manually."
+                "message": "Merge conflict detected during stash apply. Please resolve manually.",
+                "conflicted_files": conflicted_files
             }
 
         return {

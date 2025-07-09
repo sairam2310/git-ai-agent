@@ -4,8 +4,11 @@ from db import init_db, save_github_credentials, get_github_credentials
 from pydantic import BaseModel
 from repo_utils import detect_repo_info
 import global_state
-from webSocket_handler import connect_websocket, disconnect_websocket, broadcast_repo_info
+from webSocket_handler import connect_websocket, disconnect_websocket, broadcast_repo_info,file_change_broadcaster
 import asyncio
+from file_watcher import start_file_watcher
+import threading
+
 
 app = FastAPI()
 init_db()
@@ -33,7 +36,7 @@ def commit(issue_description: str,mode):
     return result
 
 @app.get("/push")
-def commit():  
+def push():  
     result = push_code()
     return result
 
@@ -41,7 +44,15 @@ def commit():
 async def startup_event():
     global_state.REPO_INFO = detect_repo_info()
     print("🧠 Repo info detected on startup:", global_state.REPO_INFO)
-    asyncio.create_task(broadcast_repo_info())  # start broadcast loop
+
+    asyncio.create_task(broadcast_repo_info())
+    asyncio.create_task(file_change_broadcaster())
+    
+    
+    loop = asyncio.get_running_loop()
+    threading.Thread(target=start_file_watcher, args=(loop,), daemon=True).start()
+    
+   
 
 @app.websocket("/ws/repo-info")
 async def websocket_endpoint(websocket: WebSocket):

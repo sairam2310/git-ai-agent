@@ -39,4 +39,12 @@ def stash_with_custom_message():
     else:
         print("⚠️ No changes to stash.")
 
+def extract_conflicted_files(output):
+    conflicted = []
+    for line in output.splitlines():
+        if "CONFLICT (content)" in line:
+            parts = line.split(" in ")
+            if len(parts) == 2:
+                conflicted.append(parts[1].strip())
+    return conflicted
 
